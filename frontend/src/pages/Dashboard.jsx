@@ -4,7 +4,6 @@ import { useTheme } from "../context/ThemeContext";
 import { api } from "../api";
 import { Toast, MiniBar, timeAgo, Spinner } from "../components/ui";
 import CreateLinkModal from "../components/CreateLinkModal";
-import QRModal from "../components/QRModal";
 import Settings from "../components/Settings";
 import Onboarding from "../components/Onboarding";
 
@@ -23,7 +22,6 @@ export default function Dashboard() {
   const [fetching, setFetching] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [qrLink, setQrLink] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!user?.onboardingCompleted);
   const [latest, setLatest] = useState(null);
@@ -108,19 +106,16 @@ export default function Dashboard() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Dark mode toggle */}
             <button onClick={toggle} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 50, padding: "7px 12px", cursor: "pointer", fontSize: 16, transition: "all .2s" }} title="Toggle dark mode">
               {dark ? "☀️" : "🌙"}
             </button>
 
-            {/* Email verify banner */}
             {!user?.isEmailVerified && (
               <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 50, padding: "6px 14px", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
                 ⚠️ Verify email
               </div>
             )}
 
-            {/* User menu */}
             <button onClick={() => setShowSettings(true)} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 50, padding: "6px 14px", cursor: "pointer", transition: "all .15s" }}>
               {user?.avatar
                 ? <img src={user.avatar} style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }} />
@@ -156,7 +151,7 @@ export default function Dashboard() {
                 <button className="btn-primary" onClick={() => setShowCreate(true)}>Snip it →</button>
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
-                {[["🔒 Password protect", "password"], ["📅 Set expiry", "expiry"], ["👁️ Preview page", "preview"], ["📋 Bulk create", "bulk"]].map(([label]) => (
+                {[["🔒 Password protect"], ["📅 Set expiry"], ["👁️ Preview page"], ["📋 Bulk create"]].map(([label]) => (
                   <button key={label} onClick={() => setShowCreate(true)} style={{ background: "none", border: "none", color: "var(--accent2)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>{label}</button>
                 ))}
               </div>
@@ -173,7 +168,6 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="btn-soft" onClick={() => copy(latest.shortUrl)}>📋 Copy</button>
-                    <button className="btn-soft" onClick={() => setQrLink(latest)}>QR</button>
                     <button className="btn-soft" onClick={() => { setTab("links"); setLatest(null); }}>View all →</button>
                   </div>
                 </div>
@@ -289,7 +283,6 @@ export default function Dashboard() {
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => copy(link.shortUrl)} title="Copy">📋</button>
-                        <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => setQrLink(link)} title="QR Code">▦</button>
                         <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => toggleActive(link)} title={link.isActive ? "Pause" : "Activate"}>{link.isActive ? "⏸" : "▶"}</button>
                         <button className="btn-danger" onClick={() => setDeleteId(link.id)}>✕</button>
                       </div>
@@ -336,7 +329,6 @@ export default function Dashboard() {
       {showCreate && (
         <CreateLinkModal folders={folders} tags={allTags} onCreated={onCreated} onClose={() => setShowCreate(false)} />
       )}
-      {qrLink && <QRModal link={qrLink} onClose={() => setQrLink(null)} />}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
 
       {/* Delete confirm */}

@@ -1,6 +1,6 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
-const QRCode = require("qrcode");
+// const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
 const Link = require("../models/Link");
 const { protect } = require("../middleware/auth");
@@ -8,15 +8,16 @@ const { protect } = require("../middleware/auth");
 const router = express.Router();
 router.use(protect);
 
-// The short URL that actually redirects = backend URL
-const BACKEND = () => `http://localhost:${process.env.PORT || 5000}`;
+// ✅ FIX: Use PUBLIC_URL env var for QR codes so phones can scan them.
+// Set PUBLIC_URL=http://YOUR_LOCAL_IP:5000 in your .env  (e.g. http://192.168.1.5:5000)
+// For production set it to your real domain e.g. https://snip.yourdomain.com
+const BACKEND = () => process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`;
 const CLIENT = () => process.env.CLIENT_URL || "http://localhost:5173";
 
 const formatLink = (link) => ({
   id: link._id,
   code: link.code,
   originalUrl: link.originalUrl,
-  // shortUrl shown in UI — points to backend so redirect works
   shortUrl: `${BACKEND()}/${link.code}`,
   clicks: link.clicks,
   trend: link.getClickTrend(),
@@ -115,25 +116,6 @@ router.post("/bulk", async (req, res, next) => {
       }
     }
     res.status(201).json({ results });
-  } catch (err) { next(err); }
-});
-
-// GET /api/links/:id/qr — generate QR code pointing to BACKEND redirect URL
-router.get("/:id/qr", async (req, res, next) => {
-  try {
-    const link = await Link.findOne({ _id: req.params.id, user: req.user._id });
-    if (!link) return res.status(404).json({ error: "Link not found." });
-
-    // QR encodes the backend URL so scanning it performs the real redirect
-    const redirectUrl = `${BACKEND()}/${link.code}`;
-
-    const qrDataUrl = await QRCode.toDataURL(redirectUrl, {
-      width: 400,
-      margin: 2,
-      color: { dark: "#5b21b6", light: "#faf8ff" },
-    });
-
-    res.json({ qr: qrDataUrl, shortUrl: redirectUrl });
   } catch (err) { next(err); }
 });
 
