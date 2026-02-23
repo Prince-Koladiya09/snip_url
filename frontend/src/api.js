@@ -41,9 +41,7 @@ export const api = {
 
   // ── Redirect helpers (public, use /r/ prefix) ─────────────────────────────
   // Verify password for a protected link
-  verifyLinkPassword: (b) => fetch(`/r/verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
-  // Confirm a preview-page redirect
-  confirmPreview: (b) => fetch(`/r/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
-  // Get public link info (for preview/password pages)
-  getLinkInfo: (code) => fetch(`/r/info/${code}`).then(handle),
+  verifyLinkPassword: (b) => fetch(`${REDIRECT_BASE}/r/verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
+  confirmPreview: (b) => fetch(`${REDIRECT_BASE}/r/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
+  getLinkInfo: (code) => fetch(`${REDIRECT_BASE}/r/info/${code}`).then(handle),
 };
