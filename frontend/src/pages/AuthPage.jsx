@@ -134,7 +134,7 @@ export default function AuthPage({ initialMode = "login", onOAuthCallback }) {
               </div>
 
               {/* GitHub OAuth */}
-              <a href="/api/auth/github" style={{
+              <a href={`${import.meta.env.VITE_API_URL || ""}/api/auth/github`} style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 padding: "12px", borderRadius: 14, border: "1.5px solid var(--border2)",
                 background: "var(--bg)", color: "var(--text)", textDecoration: "none",
