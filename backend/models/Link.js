@@ -36,7 +36,6 @@ const linkSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-linkSchema.index({ code: 1 });
 linkSchema.index({ user: 1, createdAt: -1 });
 linkSchema.index({ user: 1, folder: 1 });
 linkSchema.index({ user: 1, tags: 1 });
