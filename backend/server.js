@@ -16,12 +16,16 @@ const app = express();
 app.use(cors({
   origin: function(origin, callback) {
     const allowed = [
-      process.env.CLIENT_URL,
-      "http://localhost:5173"
+      "https://snip-frontend.vercel.app",
+      "http://localhost:5173",
+      process.env.CLIENT_URL
     ];
-    if (!origin || allowed.includes(origin)) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    if (allowed.includes(origin)) {
       callback(null, true);
     } else {
+      console.log("CORS blocked origin:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
