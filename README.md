@@ -87,6 +87,8 @@ npm run dev        # development (nodemon)
 npm start          # production
 ```
 
+Backend starts at → **http://localhost:5000**
+
 ---
 
 ### 3. Frontend Setup
@@ -98,6 +100,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Frontend starts at → **http://localhost:5173**
 
 ---
 
@@ -191,6 +195,7 @@ snip/
 
 ## 🔗 How Short Links Work
 
+```mermaid
 flowchart TD
     A([👤 User visits\nhttp://localhost:5000/abc123]) --> B[(🗄️ MongoDB\nLook up code)]
 
@@ -230,6 +235,9 @@ flowchart TD
     style P fill:#e9d5ff,color:#3d3557,stroke:#a78bfa
     style K fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
     style Q fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
+```
+
+---
 
 ## 🚢 Deployment
 
@@ -259,6 +267,16 @@ flowchart TD
 | **Cron** | node-cron |
 | **Frontend** | React 18, Vite |
 | **Styling** | CSS-in-JS (inline + global CSS vars) |
+
+---
+
+## 🐛 Known Issues / Bug Fixes in v3
+
+- ✅ Short links now correctly redirect to the **original URL** (not the frontend)
+- ✅ QR codes now encode the backend redirect URL so scanning actually works
+- ✅ Password-protected links correctly return `originalUrl` on success
+- ✅ Google OAuth removed — only GitHub OAuth remains
+- ✅ Route conflicts fixed — `/api/*` routes registered before `/:code` catch-all
 
 ---
 
