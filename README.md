@@ -191,24 +191,45 @@ snip/
 
 ## 🔗 How Short Links Work
 
-```
-User visits:  http://localhost:5000/abc123
-                        ↓
-          Backend looks up code in MongoDB
-                        ↓
-  ┌─────────────────────────────────────────────┐
-  │  Normal link       → 302 redirect to        │
-  │                      https://original-url.com│
-  │                                             │
-  │  Password protected → redirect to           │
-  │                       /preview/:code?protected=1 │
-  │                                             │
-  │  Preview required  → redirect to            │
-  │                       /preview/:code         │
-  └─────────────────────────────────────────────┘
-```
+flowchart TD
+    A([👤 User visits\nhttp://localhost:5000/abc123]) --> B[(🗄️ MongoDB\nLook up code)]
 
----
+    B --> C{Code found?}
+    C -- ❌ No --> D([🔍 404 Page\nLink Not Found])
+
+    C -- ✅ Yes --> E{Link active?}
+    E -- ❌ No --> F([⏸️ 410 Page\nLink Inactive])
+
+    E -- ✅ Yes --> G{Link expired?}
+    G -- ✅ Yes --> H([⏳ 410 Page\nLink Expired])
+
+    G -- ❌ No --> I{Password\nprotected?}
+    I -- ✅ Yes --> J([🔒 Frontend Preview Page\n/preview/:code?protected=1])
+    J --> K[User enters password]
+    K --> L{POST /r/verify\nPassword correct?}
+    L -- ❌ No --> M([❗ Error: Wrong password])
+    L -- ✅ Yes --> N
+
+    I -- ❌ No --> O{Preview\nrequired?}
+    O -- ✅ Yes --> P([👁️ Frontend Preview Page\n/preview/:code])
+    P --> Q[User clicks Continue]
+    Q --> R[POST /r/preview\nConfirm redirect]
+    R --> N
+
+    O -- ❌ No --> S[Record click\nin MongoDB]
+    S --> N([🌐 302 Redirect\nhttps://original-url.com])
+
+    style A fill:#a78bfa,color:#fff,stroke:#7c3aed
+    style N fill:#4ade80,color:#fff,stroke:#16a34a
+    style D fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
+    style F fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
+    style H fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
+    style M fill:#fca5a5,color:#7f1d1d,stroke:#ef4444
+    style B fill:#c4b5fd,color:#3d3557,stroke:#7c3aed
+    style J fill:#e9d5ff,color:#3d3557,stroke:#a78bfa
+    style P fill:#e9d5ff,color:#3d3557,stroke:#a78bfa
+    style K fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
+    style Q fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
 
 ## 🚢 Deployment
 
