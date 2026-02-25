@@ -87,8 +87,6 @@ npm run dev        # development (nodemon)
 npm start          # production
 ```
 
-Backend starts at → **http://localhost:5000**
-
 ---
 
 ### 3. Frontend Setup
@@ -100,8 +98,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-Frontend starts at → **http://localhost:5173**
 
 ---
 
