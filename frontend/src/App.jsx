@@ -5,6 +5,8 @@ import Dashboard from "./pages/Dashboard";
 import PreviewPage from "./pages/PreviewPage";
 import { GLOBAL_CSS } from "./components/ui";
 
+// Auto deploy test
+
 function Router() {
   const { user, loading, loginWithToken } = useAuth();
   const path = window.location.pathname;
