@@ -1,5 +1,10 @@
 const BASE = `${import.meta.env.VITE_API_URL || ""}/api`;
+
+// In production VITE_API_URL is set (e.g. https://snip-backend.onrender.com).
+// In development it's empty, so we use the Vite proxy.
+// Short-code redirects go through /s/<code> → proxied to backend /<code>.
 const REDIRECT_BASE = import.meta.env.VITE_API_URL || "";
+const SHORT_BASE = import.meta.env.VITE_API_URL || "/s";
 
 const getHeaders = () => {
   const token = localStorage.getItem("snip_token");
@@ -14,6 +19,8 @@ const handle = async (res) => {
   if (!res.ok) throw new Error(data.error || "Something went wrong");
   return data;
 };
+
+export { SHORT_BASE };
 
 export const api = {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -40,7 +47,6 @@ export const api = {
   getQR: (id) => fetch(`${BASE}/links/${id}/qr`, { headers: getHeaders() }).then(handle),
 
   // ── Redirect helpers (public, use /r/ prefix) ─────────────────────────────
-  // Verify password for a protected link
   verifyLinkPassword: (b) => fetch(`${REDIRECT_BASE}/r/verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
   confirmPreview: (b) => fetch(`${REDIRECT_BASE}/r/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }).then(handle),
   getLinkInfo: (code) => fetch(`${REDIRECT_BASE}/r/info/${code}`).then(handle),

@@ -16,6 +16,12 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      // Proxy short code redirects — any /s/* path goes to backend
+      "/s": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/s/, ""),
+      },
     },
   },
 });

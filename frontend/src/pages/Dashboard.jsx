@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { api } from "../api";
+import { api, SHORT_BASE } from "../api";
 import { Toast, MiniBar, timeAgo, Spinner } from "../components/ui";
 import CreateLinkModal from "../components/CreateLinkModal";
 import Settings from "../components/Settings";
@@ -27,6 +27,11 @@ export default function Dashboard() {
   const [latest, setLatest] = useState(null);
 
   const toast$ = (msg, type = "success") => setToast({ msg, type });
+
+  // Build the clickable URL for a link's code.
+  // In dev: /s/<code> → Vite proxies to backend → backend redirects to original URL.
+  // In prod: VITE_API_URL/<code> → backend redirects to original URL.
+  const shortClickUrl = (link) => `${SHORT_BASE}/${link.code}`;
 
   const loadLinks = useCallback(async () => {
     setFetching(true);
@@ -63,7 +68,14 @@ export default function Dashboard() {
     } catch (e) { toast$(e.message, "error"); }
   };
 
-  const copy = (text) => { navigator.clipboard.writeText(text); toast$("Copied! 🌷"); };
+  const copy = (link) => {
+    navigator.clipboard.writeText(shortClickUrl(link));
+    toast$("Copied! 🌷");
+  };
+
+  const openLink = (link) => {
+    window.open(shortClickUrl(link), "_blank", "noopener,noreferrer");
+  };
 
   const toggleActive = async (link) => {
     try {
@@ -118,7 +130,7 @@ export default function Dashboard() {
 
             <button onClick={() => setShowSettings(true)} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 50, padding: "6px 14px", cursor: "pointer", transition: "all .15s" }}>
               {user?.avatar
-                ? <img src={user.avatar} style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }} />
+                ? <img src={user.avatar} style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }} alt="avatar" />
                 : <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg,#a78bfa,#f472b6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#fff", fontWeight: 700 }}>{user?.name?.[0]}</div>
               }
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{user?.name?.split(" ")[0]}</span>
@@ -167,7 +179,8 @@ export default function Dashboard() {
                     <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>{latest.originalUrl}</div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn-soft" onClick={() => copy(latest.shortUrl)}>📋 Copy</button>
+                    <button className="btn-soft" onClick={() => copy(latest)}>📋 Copy</button>
+                    <button className="btn-soft" onClick={() => openLink(latest)}>↗ Open</button>
                     <button className="btn-soft" onClick={() => { setTab("links"); setLatest(null); }}>View all →</button>
                   </div>
                 </div>
@@ -199,7 +212,15 @@ export default function Dashboard() {
                 {links.slice(0, 3).map(link => (
                   <div key={link.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "14px 18px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link.shortUrl}</div>
+                      <a
+                        href={shortClickUrl(link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", textDecoration: "none" }}
+                        title="Open short link"
+                      >
+                        {link.shortUrl} ↗
+                      </a>
                       <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link.originalUrl}</div>
                     </div>
                     <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, fontWeight: 700, color: "var(--accent)", minWidth: 32, textAlign: "right" }}>{link.clicks}</div>
@@ -258,7 +279,16 @@ export default function Dashboard() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ color: "var(--accent)", fontSize: 14, fontWeight: 700 }}>{link.shortUrl}</span>
+                        {/* Clickable short URL — routes through proxy to backend */}
+                        <a
+                          href={shortClickUrl(link)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--accent)", fontSize: 14, fontWeight: 700, textDecoration: "none" }}
+                          title="Open short link in new tab"
+                        >
+                          {link.shortUrl}
+                        </a>
                         {link.isPasswordProtected && <span style={{ fontSize: 10, background: "var(--accent-bg)", color: "var(--accent)", border: "1px solid var(--accent-border)", borderRadius: 50, padding: "1px 8px", fontWeight: 700 }}>🔒 PROTECTED</span>}
                         {link.requirePreview && <span style={{ fontSize: 10, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 50, padding: "1px 8px", fontWeight: 700 }}>👁️ PREVIEW</span>}
                         {link.expiresAt && <span style={{ fontSize: 10, background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a", borderRadius: 50, padding: "1px 8px", fontWeight: 700 }}>📅 EXPIRES</span>}
@@ -282,7 +312,16 @@ export default function Dashboard() {
                         <div style={{ fontSize: 9, color: "var(--text3)", fontWeight: 600 }}>clicks</div>
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => copy(link.shortUrl)} title="Copy">📋</button>
+                        {/* ↗ Open button — visits the short link via proxy */}
+                        <button
+                          className="btn-soft"
+                          style={{ padding: "5px 10px", fontSize: 11 }}
+                          onClick={() => openLink(link)}
+                          title="Open short link"
+                        >
+                          ↗
+                        </button>
+                        <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => copy(link)} title="Copy">📋</button>
                         <button className="btn-soft" style={{ padding: "5px 10px", fontSize: 11 }} onClick={() => toggleActive(link)} title={link.isActive ? "Pause" : "Activate"}>{link.isActive ? "⏸" : "▶"}</button>
                         <button className="btn-danger" onClick={() => setDeleteId(link.id)}>✕</button>
                       </div>
