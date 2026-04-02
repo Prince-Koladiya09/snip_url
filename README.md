@@ -2,7 +2,7 @@
 
 > **Short links with a little magic** ✨
 
-A full-stack URL shortener built with Node.js + Express + MongoDB + React + Vite. Create, track, and organize short links with a beautiful UI, click analytics, password protection, and more.
+A production-grade, full-stack URL shortener built with Node.js + Express + MongoDB + React + Vite. Deployed on AWS with a CloudFront CDN, EC2 backend, and a fully automated GitHub Actions CI/CD pipeline.
 
 ---
 
@@ -25,14 +25,168 @@ A full-stack URL shortener built with Node.js + Express + MongoDB + React + Vite
 
 ---
 
-## 🚀 Getting Started
+## 🏗️ AWS Deployment Architecture
+
+```
+                        ┌─────────────────────────────────────────────┐
+                        │               GitHub Actions CI/CD           │
+                        │  push to main → build → deploy → invalidate  │
+                        └────────────┬────────────────┬────────────────┘
+                                     │                │
+                     ┌───────────────▼──┐     ┌───────▼────────────┐
+                     │   EC2 (Backend)  │     │   S3 Bucket        │
+                     │  Ubuntu 22.04    │     │  (Frontend Static) │
+                     │  Node.js + PM2   │     │  React + Vite dist │
+                     │  Nginx (reverse  │     └───────┬────────────┘
+                     │  proxy :80→5000) │             │
+                     └────────┬─────────┘     ┌───────▼────────────┐
+                              │               │   CloudFront CDN   │
+                              │               │  Global edge cache │
+                              │               │  HTTPS + Cache     │
+                              │               │  Invalidation      │
+                              │               └────────────────────┘
+                     ┌────────▼─────────┐
+                     │   MongoDB Atlas  │
+                     │  (Cloud DB)      │
+                     └──────────────────┘
+```
+
+### Infrastructure Components
+
+| Component | Service | Purpose |
+|---|---|---|
+| **Backend** | AWS EC2 (t2.micro / t3.small) | Runs Node.js API, managed by PM2 |
+| **Web Server** | Nginx on EC2 | Reverse proxy, SSL termination |
+| **Process Manager** | PM2 | Zero-downtime restarts, crash recovery |
+| **Frontend Hosting** | AWS S3 | Stores static React build artifacts |
+| **CDN** | AWS CloudFront | Global distribution, HTTPS, caching |
+| **Database** | MongoDB Atlas | Managed cloud MongoDB |
+| **Region** | `ap-south-1` (Mumbai) | Primary AWS region |
+
+### EC2 Setup (Backend)
+
+The backend runs on an EC2 instance with the following setup:
+
+```
+EC2 Instance
+├── Ubuntu 22.04 LTS
+├── Node.js 20 (via nvm)
+├── PM2 (process manager)
+│   └── snip-backend → server.js
+└── Nginx
+    └── Reverse proxy: :80 → localhost:5000
+```
+
+Nginx configuration (`/etc/nginx/sites-available/snip`):
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### S3 + CloudFront (Frontend)
+
+- The React app is built with Vite and synced to an S3 bucket configured for static website hosting.
+- CloudFront sits in front of S3 and serves assets from edge locations globally.
+- On every deployment, a wildcard cache invalidation (`/*`) is triggered to serve the latest build immediately.
+
+---
+
+## 🚀 CI/CD Pipeline (GitHub Actions)
+
+The pipeline lives in `.github/workflows/deploy.yml` and triggers automatically on every push to `main`.
+
+### Pipeline Flow
+
+```
+Push to main
+     │
+     ▼
+┌─────────────────────────────┐
+│  Job 1: deploy-backend      │
+│  (runs-on: ubuntu-latest)   │
+│                             │
+│  1. SSH into EC2            │
+│  2. git pull origin main    │
+│  3. npm install             │
+│  4. pm2 restart snip-backend│
+└────────────┬────────────────┘
+             │ (on success)
+             ▼
+┌─────────────────────────────┐
+│  Job 2: deploy-frontend     │
+│  (needs: deploy-backend)    │
+│                             │
+│  1. Checkout code           │
+│  2. Setup Node.js 20        │
+│  3. npm install (frontend)  │
+│  4. npm run build           │
+│     └─ VITE_API_URL injected│
+│  5. aws s3 sync dist/ → S3  │
+│     └─ --delete flag        │
+│  6. CloudFront invalidation │
+│     └─ paths: "/*"          │
+└─────────────────────────────┘
+```
+
+### Required GitHub Secrets
+
+Configure these in **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|---|---|
+| `EC2_SSH_KEY` | Private SSH key for EC2 instance access |
+| `AWS_ACCESS_KEY_ID` | IAM user access key (S3 + CloudFront permissions) |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `S3_BUCKET` | Name of the S3 bucket for frontend assets |
+| `CLOUDFRONT_ID` | CloudFront distribution ID |
+| `VITE_API_URL` | Backend URL injected at build time (e.g. `http://<EC2-IP>`) |
+
+### IAM Permissions Required
+
+The IAM user used by GitHub Actions needs these permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::YOUR_BUCKET_NAME",
+        "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation"],
+      "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
+    }
+  ]
+}
+```
+
+---
+
+## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
 
 - **Node.js** v18+
 - **MongoDB** running locally, or a [MongoDB Atlas](https://www.mongodb.com/atlas) URI
-
----
 
 ### 1. Clone the repository
 
@@ -41,22 +195,15 @@ git clone https://github.com/your-username/snip.git
 cd snip
 ```
 
----
-
 ### 2. Backend Setup
 
 ```bash
 cd backend
 npm install
-```
-
-Create a `.env` file (copy from `.env.example`):
-
-```bash
 cp .env.example .env
 ```
 
-Fill in your environment variables:
+Fill in your `.env`:
 
 ```env
 PORT=5000
@@ -83,15 +230,11 @@ GITHUB_CALLBACK_URL=http://localhost:5000/api/auth/github/callback
 Start the backend:
 
 ```bash
-npm run dev        # development (nodemon)
-npm start          # production
+npm run dev   # development (nodemon)
+npm start     # production
 ```
 
----
-
 ### 3. Frontend Setup
-
-Open a new terminal:
 
 ```bash
 cd frontend
@@ -105,27 +248,30 @@ npm run dev
 
 ```
 snip/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # GitHub Actions CI/CD pipeline
 ├── backend/
 │   ├── middleware/
-│   │   └── auth.js              # JWT auth middleware
+│   │   └── auth.js             # JWT auth middleware
 │   ├── models/
-│   │   ├── User.js              # User model (auth, OAuth, preferences)
-│   │   └── Link.js              # Link model (clicks, tags, folders, password, expiry)
+│   │   ├── User.js             # User model (auth, OAuth, preferences)
+│   │   └── Link.js             # Link model (clicks, tags, folders, password, expiry)
 │   ├── routes/
-│   │   ├── auth.js              # /api/auth/* (signup, login, GitHub OAuth, reset)
-│   │   ├── links.js             # /api/links/* (CRUD, bulk)
-│   │   └── redirect.js          # /:code redirect + /r/verify /r/preview /r/info/:code
+│   │   ├── auth.js             # /api/auth/* (signup, login, GitHub OAuth, reset)
+│   │   ├── links.js            # /api/links/* (CRUD, bulk)
+│   │   └── redirect.js         # /:code redirect + /r/verify /r/preview /r/info/:code
 │   ├── services/
-│   │   └── email.js             # Nodemailer HTML email templates
+│   │   └── email.js            # Nodemailer HTML email templates
 │   ├── utils/
-│   │   ├── passport.js          # GitHub OAuth strategy
-│   │   └── digestCron.js        # Hourly click digest cron job
-│   └── server.js                # App entry point
+│   │   ├── passport.js         # GitHub OAuth strategy
+│   │   └── digestCron.js       # Hourly click digest cron job
+│   └── server.js               # App entry point
 │
 └── frontend/
     ├── src/
     │   ├── components/
-    │   │   ├── ui.jsx            # Toast, Modal, MiniBar, Spinner, global CSS
+    │   │   ├── ui.jsx           # Toast, Modal, MiniBar, Spinner, global CSS
     │   │   ├── CreateLinkModal.jsx
     │   │   ├── Onboarding.jsx
     │   │   ├── QRModal.jsx
@@ -137,9 +283,10 @@ snip/
     │   │   ├── AuthPage.jsx
     │   │   ├── Dashboard.jsx
     │   │   └── PreviewPage.jsx
-    │   ├── api.js               # Centralized API calls
+    │   ├── api.js              # Centralized API calls
     │   └── App.jsx
-    └── vite.config.js
+    ├── vercel.json             # SPA rewrite rules (for Vercel alternative)
+    └── vite.config.js          # Dev proxy config
 ```
 
 ---
@@ -163,8 +310,6 @@ snip/
 | `GET` | `/github` | Start GitHub OAuth | — |
 | `GET` | `/github/callback` | GitHub OAuth callback | — |
 
----
-
 ### Links — `/api/links` (all require Bearer token)
 
 | Method | Endpoint | Description |
@@ -175,8 +320,6 @@ snip/
 | `GET` | `/:id` | Get link details |
 | `PATCH` | `/:id` | Update link |
 | `DELETE` | `/:id` | Delete link |
-
----
 
 ### Redirect — Public (no auth)
 
@@ -191,63 +334,28 @@ snip/
 
 ## 🔗 How Short Links Work
 
-```mermaid
-flowchart TD
-    A([👤 User visits\nhttp://localhost:5000/abc123]) --> B[(🗄️ MongoDB\nLook up code)]
-
-    B --> C{Code found?}
-    C -- ❌ No --> D([🔍 404 Page\nLink Not Found])
-
-    C -- ✅ Yes --> E{Link active?}
-    E -- ❌ No --> F([⏸️ 410 Page\nLink Inactive])
-
-    E -- ✅ Yes --> G{Link expired?}
-    G -- ✅ Yes --> H([⏳ 410 Page\nLink Expired])
-
-    G -- ❌ No --> I{Password\nprotected?}
-    I -- ✅ Yes --> J([🔒 Frontend Preview Page\n/preview/:code?protected=1])
-    J --> K[User enters password]
-    K --> L{POST /r/verify\nPassword correct?}
-    L -- ❌ No --> M([❗ Error: Wrong password])
-    L -- ✅ Yes --> N
-
-    I -- ❌ No --> O{Preview\nrequired?}
-    O -- ✅ Yes --> P([👁️ Frontend Preview Page\n/preview/:code])
-    P --> Q[User clicks Continue]
-    Q --> R[POST /r/preview\nConfirm redirect]
-    R --> N
-
-    O -- ❌ No --> S[Record click\nin MongoDB]
-    S --> N([🌐 302 Redirect\nhttps://original-url.com])
-
-    style A fill:#a78bfa,color:#fff,stroke:#7c3aed
-    style N fill:#4ade80,color:#fff,stroke:#16a34a
-    style D fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
-    style F fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
-    style H fill:#f9a8d4,color:#7f1d1d,stroke:#ec4899
-    style M fill:#fca5a5,color:#7f1d1d,stroke:#ef4444
-    style B fill:#c4b5fd,color:#3d3557,stroke:#7c3aed
-    style J fill:#e9d5ff,color:#3d3557,stroke:#a78bfa
-    style P fill:#e9d5ff,color:#3d3557,stroke:#a78bfa
-    style K fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
-    style Q fill:#f5f3ff,color:#3d3557,stroke:#c4b5fd
 ```
-
----
-
-## 🚢 Deployment
-
-### Backend (e.g. Render)
-
-1. Set all environment variables in your host's dashboard
-2. Set `CLIENT_URL` to your deployed frontend URL
-3. Set `GITHUB_CALLBACK_URL` to `https://your-backend.com/api/auth/github/callback`
-4. Start command: `npm start`
-
-### Frontend (e.g. Vercel)
-
-1. Set `VITE_API_URL` to your deployed backend URL (e.g. `https://your-backend.onrender.com`)
-2. The `vercel.json` included handles client-side routing rewrites automatically
+User visits /:code
+      │
+      ▼
+ MongoDB lookup
+      │
+  ┌───▼────┐
+  │ Found? │──── No ──→ 404
+  └───┬────┘
+      │ Yes
+      ▼
+  Active? ──── No ──→ 410 Inactive
+      │
+  Expired? ─── Yes ─→ 410 Expired
+      │
+  Password? ── Yes ─→ Frontend /preview/:code?protected=1
+      │                └─ POST /r/verify → originalUrl
+  Preview? ─── Yes ─→ Frontend /preview/:code
+      │                └─ POST /r/preview → originalUrl
+      │
+  Record click → 302 redirect → original URL
+```
 
 ---
 
@@ -258,15 +366,19 @@ flowchart TD
 | **Backend** | Node.js, Express.js |
 | **Database** | MongoDB + Mongoose |
 | **Auth** | JWT, bcryptjs, Passport.js (GitHub OAuth) |
-| **Email** | Nodemailer |
+| **Email** | Nodemailer (Gmail SMTP) |
 | **ID generation** | nanoid |
 | **Cron** | node-cron |
 | **Frontend** | React 18, Vite |
 | **Styling** | CSS-in-JS (inline + global CSS vars) |
+| **Hosting (FE)** | AWS S3 + CloudFront |
+| **Hosting (BE)** | AWS EC2 + Nginx + PM2 |
+| **Database Hosting** | MongoDB Atlas |
+| **CI/CD** | GitHub Actions |
 
 ---
 
-## 🐛 Known Issues / Bug Fixes in v3
+## 🐛 Bug Fixes in v3
 
 - ✅ Short links now correctly redirect to the **original URL** (not the frontend)
 - ✅ QR codes now encode the backend redirect URL so scanning actually works
